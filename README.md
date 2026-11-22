@@ -25,7 +25,14 @@ flowchart LR
     DBT --> BI[Athena / BI]
 ```
 
+## Architecture — Before / After
+
+Hover any component to see what it is and why it is needed.
+
+![Before / After architecture](docs/before-after-elaborated.svg)
+
 ## Quickstart
+
 
 **Prerequisites:** AWS CLI (authenticated), Terraform ≥ 1.5, Python 3.11. Times are honest estimates on a typical setup.
 
