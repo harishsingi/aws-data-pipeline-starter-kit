@@ -30,6 +30,25 @@ flowchart LR
 Hover any component to see what it is and why it is needed.
 
 ![Before / After architecture](docs/before-after-elaborated.svg)
+<details>
+<summary><b>Ingest, validate and transform — click to expand the 4 steps</b></summary>
+
+Collapsed, this is just: S3 landing -> Lambda validate -> Quarantine -> Glue 4.0 ETL
+
+1. A file lands in the S3 landing zone.
+2. The Lambda validator fires on arrival and checks the file, recording every outcome in CloudWatch.
+3. Bad files go to quarantine, held apart instead of landing; only validated files move on.
+4. The Glue 4.0 PySpark job transforms bronze to silver to gold, building the star schema (dim_customer SCD2, dim_product SCD1, dim_date, fact_orders).
+</details>
+
+### Earlier issues, risk, and impact after
+
+| Aspect | Detail |
+|---|---|
+| Earlier issues | Files landed with no checks, so bad data flowed downstream unnoticed; a Glue job run by hand with no schedule, so runs were easy to miss; tables lived in scattered places with no shared catalog, so teams guessed at schemas; queries ran directly on raw tables with no tests; changes were deployed by hand with no checks; no cost limits or lifecycle rules; dashboards read raw data directly. |
+| Risk | Bad data could reach dashboards and decisions before anyone noticed; a bad deploy could break the pipeline; costs could grow unnoticed; one upstream change could break every dashboard at once. |
+| Impact after | Every file is validated on arrival and bad files are quarantined before they can land; the medallion transform builds a catalogued star schema in one place; dbt marts carry tests and docs; Athena workgroup limits and CloudWatch metrics keep cost and failures visible; Terraform and CI/CD make deploys repeatable and checked. |
+
 
 ## Quickstart
 
