@@ -1,0 +1,9 @@
+# Great Expectations dependency for the data-quality checks.
+#
+# Install with: pip install -r requirements.txt
+#
+# GX 1.x (fluent API) is used by validate_orders.py. The <2 upper bound
+# keeps the fluent API stable; the >=1.0 floor excludes the legacy 0.x
+# batch-request API entirely.
+
+great-expectations>=1.0,<2

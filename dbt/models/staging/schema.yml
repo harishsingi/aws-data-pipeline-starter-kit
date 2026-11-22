@@ -1,0 +1,112 @@
+# Column-level documentation and generic tests for the staging layer.
+#
+# Test strategy at this layer:
+#   * unique + not_null on business keys (order_id, customer_id, product_id)
+#     — a duplicate or null key here corrupts every downstream join.
+#   * relationships — every order line must resolve to a known customer and
+#     product; orphans are caught before they reach revenue metrics.
+#   * accepted_values on segment — the dimension contract; new segments must
+#     be an explicit, reviewed change.
+#
+# Singular (custom SQL) tests live in tests/ for logic that generic tests
+# can't express (see tests/assert_line_total_matches.sql).
+
+version: 2
+
+models:
+  - name: stg_orders
+    description: "Typed view over silver_orders. Grain: one row per order line item."
+    columns:
+      - name: order_id
+        description: Business key for the order.
+        tests:
+          - unique
+          - not_null
+      - name: order_ts
+        description: Order timestamp (UTC), cast from the silver string.
+        tests:
+          - not_null
+      - name: customer_id
+        description: Foreign key to stg_customers.customer_id.
+        tests:
+          - not_null
+      - name: product_id
+        description: Foreign key to stg_products.product_id.
+        tests:
+          - not_null
+      - name: quantity
+        description: Units ordered (positive integer).
+        tests:
+          - not_null
+      - name: unit_price
+        description: Price per unit in USD before discount.
+        tests:
+          - not_null
+      - name: discount
+        description: Per-unit discount in USD.
+        tests:
+          - not_null
+      - name: dt
+        description: Date partition re-derived from order_ts.
+
+  - name: stg_customers
+    description: "Typed view over silver_customers. Grain: one row per customer."
+    columns:
+      - name: customer_id
+        description: Customer business key.
+        tests:
+          - unique
+          - not_null
+      - name: full_name
+        description: Customer display name.
+      - name: email
+        description: Customer contact email.
+      - name: segment
+        description: Customer segment; controlled vocabulary.
+        tests:
+          - accepted_values:
+              values: ["consumer", "corporate", "enterprise"]
+      - name: updated_ts
+        description: Timestamp of last record update.
+
+  - name: stg_products
+    description: "Typed view over silver_products. Grain: one row per product."
+    columns:
+      - name: product_id
+        description: Product business key.
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: Human-readable product name.
+      - name: category
+        description: Product category (lowercased at staging).
+      - name: unit_price
+        description: Current list price per unit in USD.
+      - name: updated_ts
+        description: Timestamp of last record update.
+
+  # Relationship tests for the intermediate layer live here (alongside the
+  # staging tests they depend on) so the full key-integrity story reads in
+  # one place: every order line must point at a real customer and product.
+  - name: int_order_lines
+    description: >
+      Order lines enriched with customer/product context. Grain: one row per
+      order line item. Relationships guard revenue math against orphans.
+    columns:
+      - name: customer_id
+        description: Foreign key to stg_customers.customer_id.
+        tests:
+          - relationships:
+              to: ref('stg_customers')
+              field: customer_id
+      - name: product_id
+        description: Foreign key to stg_products.product_id.
+        tests:
+          - relationships:
+              to: ref('stg_products')
+              field: product_id
+      - name: line_total
+        description: Net revenue for the line item = quantity * (unit_price - discount).
+      - name: order_date
+        description: Business date of the order, derived from order_ts.

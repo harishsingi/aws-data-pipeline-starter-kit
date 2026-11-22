@@ -1,0 +1,9 @@
+customer_id,full_name,email,segment,updated_ts
+CUST-001,Alice Nguyen,alice.nguyen@example.com,consumer,2026-09-19T10:00:00
+CUST-002,Bob Carter,bob.carter@example.com,corporate,2026-09-18T15:30:00
+CUST-003,Carla Diaz,carla.diaz@example.com,enterprise,2026-09-17T09:45:00
+CUST-004,David Okafor,david.okafor@example.com,consumer,2026-09-16T12:10:00
+CUST-005,Emma Rossi,emma.rossi@example.com,corporate,2026-09-15T14:25:00
+CUST-006,Farid Hassan,farid.hassan@example.com,consumer,2026-09-14T11:05:00
+CUST-007,Grace Kim,grace.kim@example.com,enterprise,2026-09-13T16:40:00
+CUST-008,Henry Patel,henry.patel@example.com,consumer,2026-09-12T08:55:00

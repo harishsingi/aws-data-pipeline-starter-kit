@@ -1,0 +1,18 @@
+# dbt dependencies for the pipeline_marts project.
+#
+# Install with: pip install -r requirements.txt
+#
+# Two adapters are pinned loosely on purpose:
+#   dbt-duckdb          — local development (--target local). Fast, no AWS.
+#   dbt-athena-community — production against Athena/Glue (--target prod).
+
+# dbt core framework. Minor-version floor keeps us on modern materialization
+# and test APIs; no upper bound so security patches are picked up freely.
+dbt-core>=1.8
+
+# Local dev adapter: builds the full pipeline from CSV seeds on a laptop.
+dbt-duckdb>=1.8
+
+# Production adapter: reads silver Glue tables via Athena and writes marts
+# back to the Glue catalog. Needs AWS credentials at runtime.
+dbt-athena-community>=1.8

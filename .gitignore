@@ -1,0 +1,36 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build artifacts
+build/
+target/
+dist/
+*.zip
+*.egg-info/
+
+# dbt
+dbt_packages/
+logs/
+*.duckdb
+*.duckdb.wal
+
+# Generated sample data (regenerate with `make sample-data`)
+sample_data/
+
+# Local environment
+.env
+.env.*
+
+# macOS
+.DS_Store

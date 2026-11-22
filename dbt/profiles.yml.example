@@ -1,0 +1,52 @@
+# =====================================================================
+# profiles.yml — EXAMPLE connection config for the pipeline_marts project.
+#
+# Copy this file to ~/.dbt/profiles.yml (do NOT commit real credentials):
+#     cp profiles.yml.example ~/.dbt/profiles.yml
+#
+# Every configurable value is commented below. Secrets and environment
+# specifics are always read from environment variables — never hardcoded.
+# =====================================================================
+
+# The profile name MUST match `profile:` in dbt_project.yml.
+pipeline_marts:
+
+  # Which output dbt uses when no --target flag is given.
+  target: local
+
+  outputs:
+
+    # ------------------------------------------------------------------
+    # local — developer iteration on a laptop. Uses dbt-duckdb against
+    # CSV seeds (models/ read them via the lake_ref macro, see macros/).
+    # ------------------------------------------------------------------
+    local:
+      # Adapter plugin to load.
+      type: duckdb
+      # Local DuckDB file dbt creates. `target/` is gitignored by default.
+      path: target/dev.duckdb
+      # Parallel model execution threads.
+      threads: 4
+
+    # ------------------------------------------------------------------
+    # prod — reads the real silver Glue tables via Athena and materializes
+    # marts back into the Glue catalog database.
+    # Requires: pip install dbt-athena-community, plus AWS credentials that
+    # can query Athena and write to the staging S3 prefix.
+    # ------------------------------------------------------------------
+    prod:
+      # Community-maintained Athena adapter.
+      type: athena
+      # S3 prefix where Athena writes query results / CTAS outputs.
+      # Matches the Terraform artifacts bucket from the kit's infra module.
+      s3_staging_dir: s3://data-pipeline-kit-dev-artifacts/dbt-staging/
+      # AWS region. Override per environment; defaults to us-east-1.
+      region: "{{ env_var('AWS_REGION', 'us-east-1') }}"
+      # Glue catalog database holding silver_orders / silver_customers /
+      # silver_products. Terraform drives this name via its glue_database
+      # variable; dbt reads the same value from the environment.
+      database: "{{ env_var('GLUE_DATABASE', 'data_pipeline_kit_dev') }}"
+      # Athena workgroup for query execution (cost tracking, limits).
+      work_group: data-pipeline-kit-dev-wg
+      # Parallel model execution threads.
+      threads: 4

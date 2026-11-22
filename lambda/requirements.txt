@@ -1,0 +1,4 @@
+# boto3 is preinstalled in the AWS Lambda Python runtime, so it is NOT
+# packaged with the deployment zip. It is listed here so that local
+# installs (unit tests, linters, IDEs) resolve the import.
+boto3>=1.34

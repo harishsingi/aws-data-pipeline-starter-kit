@@ -1,0 +1,9 @@
+product_id,product_name,category,unit_price,updated_ts
+PROD-101,Wireless Headphones,Electronics,149.99,2026-09-19T08:00:00
+PROD-102,Running Shoes,Apparel,89.50,2026-09-19T08:00:00
+PROD-103,Coffee Maker,Home,79.99,2026-09-19T08:00:00
+PROD-104,Laptop Stand,Electronics,45.00,2026-09-19T08:00:00
+PROD-105,Yoga Mat,Sports,29.99,2026-09-19T08:00:00
+PROD-106,Desk Lamp,Home,39.95,2026-09-19T08:00:00
+PROD-107,Water Bottle,Sports,24.99,2026-09-19T08:00:00
+PROD-108,Backpack,Apparel,69.99,2026-09-19T08:00:00

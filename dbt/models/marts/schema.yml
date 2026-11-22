@@ -1,0 +1,49 @@
+# Documentation for the marts layer: the queryable, analytics-ready tables.
+
+version: 2
+
+models:
+  - name: mart_sales_daily
+    description: >
+      Daily revenue KPIs, one row per order_date. Consumed by dashboards and
+      the daily revenue report.
+    columns:
+      - name: order_date
+        description: Business date of the orders.
+        tests:
+          - unique
+          - not_null
+      - name: orders_count
+        description: Number of distinct orders placed on the date.
+      - name: total_revenue
+        description: Sum of line_total (net USD) for the date.
+      - name: avg_order_value
+        description: total_revenue / orders_count (null-safe).
+      - name: unique_customers
+        description: Number of distinct customers who ordered on the date.
+
+  - name: mart_customer_lifetime_value
+    description: >
+      Per-customer lifetime rollup, one row per customer. Consumed by
+      segmentation, retention analysis, and LTV reporting.
+    columns:
+      - name: customer_id
+        description: Customer business key.
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('stg_customers')
+              field: customer_id
+      - name: full_name
+        description: Customer display name.
+      - name: segment
+        description: Customer segment (consumer, corporate, enterprise).
+      - name: total_orders
+        description: Lifetime count of distinct orders.
+      - name: lifetime_revenue
+        description: Lifetime sum of line_total (net USD).
+      - name: first_order_ts
+        description: Timestamp of the customer's earliest order.
+      - name: last_order_ts
+        description: Timestamp of the customer's most recent order.

@@ -1,0 +1,76 @@
+# Silver-layer sources: Glue tables produced by the kit's ingestion/Glue jobs.
+#
+# NOTE on freshness: dbt freshness checks are intentionally NOT configured
+# here. The silver tables are date-partitioned by `dt` (a STRING partition
+# column, not a timestamp), and dbt's freshness check requires a timestamp
+# loaded_at_field — which would misfire or require casting hacks. Instead,
+# landing-file freshness is enforced by the Great Expectations suite in
+# data-quality/ (validate_orders.py), which validates files *before* they are
+# written to silver. Uncomment and adapt the block below only if your silver
+# tables gain a true event-time column.
+#
+#     freshness:
+#       warn_after: {count: 24, period: hour}
+#       error_after: {count: 48, period: hour}
+#     loaded_at_field: order_ts
+
+version: 2
+
+sources:
+  - name: lake
+    # Terraform owns this name via its `glue_database` variable; dbt picks
+    # up the same value from the environment so both stay in sync.
+    database: "{{ env_var('GLUE_DATABASE', 'data_pipeline_kit_dev') }}"
+    description: >
+      Silver layer of the data lake: cleaned, de-duplicated records written
+      by the kit's Glue ingestion jobs. Reads here are append/partition
+      writes; business logic lives downstream in staging/intermediate/marts.
+
+    tables:
+      - name: silver_orders
+        description: One row per order line item written by the ingestion job.
+        columns:
+          - name: order_id
+            description: Business key for the order (e.g. ORD-1001). Unique.
+          - name: order_ts
+            description: Timestamp the order was placed (UTC, ISO-8601 string in silver).
+          - name: customer_id
+            description: Foreign key to silver_customers.customer_id.
+          - name: product_id
+            description: Foreign key to silver_products.product_id.
+          - name: quantity
+            description: Number of units ordered. Positive integer.
+          - name: unit_price
+            description: Price per unit in USD before discount.
+          - name: discount
+            description: Per-unit discount in USD (0 when none applied).
+          - name: dt
+            description: Date partition (YYYY-MM-DD) derived from order_ts at ingestion time.
+
+      - name: silver_customers
+        description: Customer master records (SCD-style, latest row per customer).
+        columns:
+          - name: customer_id
+            description: Customer business key (e.g. CUST-001). Unique.
+          - name: full_name
+            description: Customer's display name.
+          - name: email
+            description: Customer contact email.
+          - name: segment
+            description: Customer segment — one of consumer, corporate, enterprise.
+          - name: updated_ts
+            description: Timestamp of the last record update (UTC).
+
+      - name: silver_products
+        description: Product master records (latest row per product).
+        columns:
+          - name: product_id
+            description: Product business key (e.g. PROD-101). Unique.
+          - name: product_name
+            description: Human-readable product name.
+          - name: category
+            description: Product category (e.g. electronics, apparel).
+          - name: unit_price
+            description: Current list price per unit in USD.
+          - name: updated_ts
+            description: Timestamp of the last record update (UTC).

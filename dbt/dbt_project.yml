@@ -1,0 +1,45 @@
+# dbt project: pipeline_marts
+#
+# Transforms the "silver" layer of the AWS Data Pipeline Starter Kit (Glue
+# tables in the Glue catalog) into analytics-ready marts.
+#
+# Two deployment modes:
+#   * local (dbt-duckdb)  — fast iteration against CSV seeds that mirror the
+#                           silver schemas. No AWS access required.
+#   * prod  (dbt-athena)   — reads the real Glue tables via Athena; writes
+#                           back to the Glue database configured via env vars.
+# See profiles.yml.example for connection details.
+
+name: "pipeline_marts"
+version: "1.0.0"
+config-version: 2
+
+# Must match the profile name in profiles.yml(.example).
+profile: "pipeline_marts"
+
+# Project directory layout.
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+# Default materializations per layer. Views keep staging/intermediate cheap;
+# marts are tables so downstream dashboards (QuickSight, BI tools) get stable,
+# queryable datasets instead of re-computing joins on every query.
+models:
+  pipeline_marts:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
+
+# Seeds (local dev fixtures mirroring the silver schemas) land in their own
+# schema so they never collide with production tables.
+seeds:
+  pipeline_marts:
+    +schema: seeds
