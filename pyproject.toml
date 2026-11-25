@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aws-data-pipeline-starter-kit"
+version = "0.2.0"
+description = "Deployable template for a batch lakehouse pipeline on AWS (S3 + Lambda + Glue + Athena + dbt)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Harish Reddy Singi Reddy" }]
+
+[project.optional-dependencies]
+# Local development / testing only. The Lambda runtime already provides
+# boto3, and the Glue job runs on Glue 4.0 (Python 3.10, Spark 3.3).
+dev = [
+    "boto3>=1.34",  # local runs of the Lambda handler beyond the stubbed tests
+    "pytest>=8",    # optional: the unittest suites are also pytest-collectable
+]
+
+[tool.setuptools]
+# src/ layout: the importable package is src/pipeline_kit.
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+# pytest collects the stdlib unittest suites; no pytest-only tests exist.
+testpaths = ["tests", "lambda/tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]

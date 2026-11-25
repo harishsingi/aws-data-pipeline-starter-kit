@@ -59,5 +59,5 @@ Environments are Terraform variable sets, not separate code:
 1. Create `terraform/environments/dev.tfvars`, `stage.tfvars`, `prod.tfvars` setting `project_name`, `environment`, `aws_region`, `glue_worker_type`, `glue_num_workers` per environment. Resource names derive from `project_name` + `environment` (e.g., `data-pipeline-kit-prod-raw`), so stacks don't collide.
 2. Keep state separate per environment (separate S3 backends or workspaces) — never share a state file between environments.
 3. Apply per environment: `terraform apply -var-file=environments/stage.tfvars`.
-4. In CI, the `deploy.yml` workflow targets prod via secrets/vars; stage can deploy from a `release/*` branch pattern or a manual dispatch — pick one and document it in the workflow file before enabling.
+4. If you add CI later, have it target prod via secrets/vars; stage can deploy from a `release/*` branch pattern or a manual dispatch — pick one and document it in the workflow file before enabling. (No workflow files ship with this repo.)
 5. Promote code, not data: the same commit hash deploys to stage then prod; only the tfvars and secret values differ.

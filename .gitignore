@@ -32,5 +32,10 @@ sample_data/
 .env
 .env.*
 
+# Test / packaging caches
+.pytest_cache/
+htmlcov/
+.coverage
+
 # macOS
 .DS_Store

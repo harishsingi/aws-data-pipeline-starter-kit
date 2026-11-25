@@ -11,6 +11,11 @@ layer by the Glue ingestion jobs. Use it:
 Exits 0 when every expectation passes, 1 when any expectation fails
 (or when no input files are found / loading fails).
 
+Landing files carry no ``dt`` column -- the partition is part of the path
+(``.../dt=2026-09-25/orders.jsonl``) -- so the loader derives ``dt`` from
+the path (see ``pipeline_kit.validation.derive_dt_from_path``) instead of
+rejecting the file. A file with no ``dt=`` segment in its path is an error.
+
 Requires: pip install -r requirements.txt
 """
 
@@ -18,13 +23,21 @@ from __future__ import annotations
 
 import argparse
 import glob
+import logging
+import os
 import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "src"))
 
 import pandas as pd
 
 import great_expectations as gx
 from great_expectations import expectations as gxe
+
+from pipeline_kit.validation import check_required_columns, derive_dt_from_path
+
+logger = logging.getLogger("validate_orders")
 
 SUITE_NAME = "orders_suite"
 
@@ -43,7 +56,16 @@ REQUIRED_COLUMNS = [
 
 
 def load_input(pattern: str) -> pd.DataFrame:
-    """Load every file matching the glob into a single DataFrame."""
+    """Load every file matching the glob into a single DataFrame.
+
+    The ``dt`` column is derived from each file's ``dt=YYYY-MM-DD`` path
+    segment when the file itself has no ``dt`` column (the normal case for
+    landing files). Files that carry a ``dt`` column keep their own values.
+
+    Raises:
+        SystemExit: If no files match, a file type is unsupported, a
+            required column is missing, or ``dt`` cannot be derived.
+    """
     paths = sorted(glob.glob(pattern, recursive=True))
     if not paths:
         raise SystemExit(f"ERROR: no files matched input pattern: {pattern}")
@@ -61,9 +83,18 @@ def load_input(pattern: str) -> pd.DataFrame:
                 f"ERROR: unsupported file type for {raw!r}; "
                 "expected .jsonl, .json or .parquet"
             )
+        # Derive dt from the path when the file does not carry it.
+        if "dt" not in frames[-1].columns:
+            dt_value = derive_dt_from_path(raw)
+            if dt_value is None:
+                raise SystemExit(
+                    f"ERROR: cannot derive dt for {raw!r}: no dt=YYYY-MM-DD "
+                    "segment in the path and no dt column in the file."
+                )
+            frames[-1]["dt"] = dt_value
 
     df = pd.concat(frames, ignore_index=True)
-    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    missing = check_required_columns(list(df.columns), REQUIRED_COLUMNS)
     if missing:
         raise SystemExit(f"ERROR: input is missing required columns: {missing}")
     return df
@@ -124,24 +155,27 @@ def validate(
     return batch.validate(suite)
 
 
-def print_summary(validation_result) -> bool:
-    """Print a human-readable summary. Returns True when all passed."""
+def log_summary(validation_result, *, rows: int) -> bool:
+    """Log a human-readable summary. Returns True when all passed."""
     results = validation_result.results
     evaluated = len(results)
     passed = [r for r in results if r.success]
     failed = [r for r in results if not r.success]
 
-    print(f"Suite: {SUITE_NAME}")
-    print(f"Evaluated expectations : {evaluated}")
-    print(f"Successful             : {len(passed)}")
-    print(f"Failed                 : {len(failed)}")
+    logger.info(
+        "Suite %s: rows=%d evaluated=%d successful=%d failed=%d",
+        SUITE_NAME,
+        rows,
+        evaluated,
+        len(passed),
+        len(failed),
+    )
 
     if failed:
-        print("\nFailed expectations:")
         for r in failed:
             expectation_type = r.expectation_config.type
             column = r.expectation_config.kwargs.get("column", "?")
-            print(f"  - {expectation_type} (column: {column})")
+            logger.error("Failed expectation: %s (column: %s)", expectation_type, column)
         return False
     return True
 
@@ -161,15 +195,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
     args = parse_args(argv)
 
     try:
         df = load_input(args.input)
     except SystemExit as exc:
-        print(exc, file=sys.stderr)
+        logger.error("%s", exc)
         return 1
 
-    print(f"Loaded {len(df)} rows from {args.input!r}")
+    logger.info("Loaded %d rows from %r", len(df), args.input)
 
     # Ephemeral context: no great_expectations.yml project on disk, no
     # Data Docs — just validate and report. Perfect for CI/pre-Glue checks.
@@ -178,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
     context = gx.get_context(mode="ephemeral")
     suite = build_suite()
     result = validate(context, df, suite)
-    ok = print_summary(result)
+    ok = log_summary(result, rows=len(df))
     return 0 if ok else 1
 
 

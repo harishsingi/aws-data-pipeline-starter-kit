@@ -22,15 +22,15 @@ python3 scripts/generate_sample_data.py \
   --out "$SAMPLE_OUT"
 
 echo
-echo "==> [2/3] Running ingestion Lambda unit tests ..."
-python3 -m unittest discover -s lambda/tests
+echo "==> [2/3] Running the full unit test suite ..."
+python3 tests/run_tests.py
 
 echo
 echo "==> [3/3] Great Expectations validation ..."
 if python3 -c "import great_expectations" >/dev/null 2>&1; then
   if [[ -f "data-quality/great_expectations/validate_orders.py" ]]; then
     python3 data-quality/great_expectations/validate_orders.py \
-      --data-dir "$SAMPLE_OUT/raw/landing/orders"
+      --input "$SAMPLE_OUT/raw/landing/orders/*/*.jsonl"
   else
     echo "great-expectations is installed, but"
     echo "data-quality/great_expectations/validate_orders.py is not present yet."

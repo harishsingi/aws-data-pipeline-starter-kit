@@ -28,6 +28,25 @@ Reliability notes:
 - A per-file failure (e.g. the object cannot be read) is logged, metrics are
   still emitted, and the exception is re-raised so the invocation is marked
   failed and normal S3/Lambda retry semantics apply.
+- S3 reads/writes and CloudWatch metric emission are retried with
+  exponential backoff (3 attempts, see `retry.py`); a persistent error
+  still fails the invocation rather than silently dropping the file.
+- Output keys are derived deterministically from the source key, so
+  re-processing the same file overwrites the same outputs instead of
+  duplicating them.
+
+## Module layout
+
+| Module | Contents |
+|---|---|
+| `app.py` | Handler, S3 wiring, metrics emission |
+| `config.py` | Prefixes, field lists, env-based configuration |
+| `validation.py` | Pure `validate_record` (mirrors `src/pipeline_kit/validation.py`) |
+| `retry.py` | Exponential-backoff retry (mirrors `src/pipeline_kit/retry.py`) |
+
+`validation.py` and `retry.py` are mirrored copies because the Lambda zip
+is self-contained; `tests/test_mirrors.py` asserts they agree with the
+shared package.
 
 ## Environment variables
 
@@ -84,9 +103,12 @@ terraform apply
 
 ### Manual update of the function code
 
+The deployment zip contains the whole `lambda/src` directory (Terraform
+packages it with `archive_file`; see `terraform/lambda.tf`):
+
 ```bash
 cd lambda/src
-zip -r ../../dist/ingestion.zip app.py
+zip -r ../../dist/ingestion.zip .
 aws lambda update-function-code \
   --function-name "$FUNCTION_NAME" \
   --zip-file fileb://../../dist/ingestion.zip

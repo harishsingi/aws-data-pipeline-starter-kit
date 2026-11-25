@@ -58,7 +58,7 @@ flowchart LR
 | dbt (Athena adapter) | Builds business marts on top of gold tables in the curated/marts buckets | SQL-based modeling with tests, docs, and lineage for the analytics layer |
 | Athena workgroup (`data-pipeline-kit-dev-wg`) | Serverless SQL for analysts and BI tools | Pay-per-scan; no cluster to manage; workgroup enforces cost/scan guardrails |
 | Terraform (`terraform/`) | Provisions all AWS resources | One-command, repeatable infrastructure; environments via tfvars |
-| GitHub Actions (`.github/workflows/`) | PR checks (terraform fmt/validate, Python compile, unit tests, dbt parse) and main-branch deploy (terraform apply, dbt build) | Catches bad config and code before it ships; deploy is a git push |
+| Local checks (`make test`, `compileall`, `terraform validate`, `dbt parse`) | Run by hand before a deploy (see [Checks before you deploy](#checks-before-you-deploy)) | Catches bad config and code before it ships; no workflow files ship with this repo |
 
 ## Data flow (numbered)
 

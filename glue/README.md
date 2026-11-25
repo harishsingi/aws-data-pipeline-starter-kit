@@ -1,10 +1,11 @@
-# Glue ETL Job — `etl_job.py`
+# Glue ETL Job — `etl_job.py` + `src/etl/` package
 
 The core batch pipeline of the starter kit. One AWS Glue 4.0 job
 (Spark 3.3, Python 3.10) that turns validated raw orders plus customer/product
 reference snapshots into a queryable bronze → silver → gold lakehouse, registers
 every output in the Glue Data Catalog, and enforces data-quality gates before
-committing.
+committing. The driver is `glue/etl_job.py`; the stages live in the
+`glue/src/etl/` package (see [Module layout](#module-layout)).
 
 ## What it does
 
@@ -81,8 +82,13 @@ unchanged in dev/stage/prod by passing different arguments.
 
 The `terraform/` module in this repo provisions the job:
 
-- Uploads `glue/etl_job.py` to the scripts prefix of the artifacts bucket
-  (e.g. `s3://<artifacts>/glue/scripts/etl_job.py`).
+- Uploads `glue/etl_job.py` (thin driver) to the scripts prefix of the
+  artifacts bucket (e.g. `s3://<artifacts>/glue/scripts/etl_job.py`).
+- Packages the helper modules in `glue/src/etl/` as a zip
+  (`glue-scripts/etl_package.zip`) and passes it to the job via the
+  `--extra-py-files` default argument, so the driver can
+  `from etl.config import ...`. Verify the zip locally with
+  `make glue-package`.
 - Creates an `aws_glue_job` (Glue 4.0, `glueetl`, Python 3) whose
   `command.script_location` points at the uploaded script, with
   `default_arguments` supplying `--RAW_BUCKET`, `--CURATED_BUCKET`,
@@ -91,6 +97,22 @@ The `terraform/` module in this repo provisions the job:
   not baked into the job definition.
 - The module also creates the IAM role (S3 + Glue + CloudWatch Logs access),
   the Glue database, and an EventBridge daily schedule.
+
+## Module layout
+
+`glue/etl_job.py` is only the driver (argument parsing, stage orchestration,
+timings). The work lives in `glue/src/etl/`:
+
+| Module | Contents |
+|---|---|
+| `config.py` | Constants, Spark schemas, catalog DDL, argument parsing |
+| `spark.py` | Spark/Glue session bootstrap |
+| `s3utils.py` | S3 control-plane helpers (`dt=` prefixes, HEAD with retry) |
+| `silver.py` | Bronze write + silver build/write (quarantine + dedupe) |
+| `gold.py` | Dimensions (SCD2 / SCD1 / calendar) + `fact_orders` |
+| `catalog.py` | Glue Data Catalog registration |
+| `quality.py` | Data-quality gates (incl. the orphan-rate check) |
+| `retry.py` | Exponential-backoff retry (mirrors `src/pipeline_kit/retry.py`) |
 
 ## Run it manually
 
@@ -147,8 +169,13 @@ bookmarks add nothing.
 ## Local syntax check
 
 `awsglue` / `pyspark` are only importable on Glue workers or a Glue dev
-endpoint; `py_compile` does not execute imports, so this is enough for CI:
+endpoint; `py_compile` does not execute imports, so this is enough for a
+local check:
 
 ```bash
-python3 -m py_compile glue/etl_job.py
+python3 -m py_compile glue/etl_job.py glue/src/etl/*.py
 ```
+
+The module tests (`python3 tests/run_tests.py`, Glue section) stub
+`pyspark` / `awsglue` and cover argument parsing, the S3 helpers and the
+quality gate; the Spark transform bodies are not executed locally.

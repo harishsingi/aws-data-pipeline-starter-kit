@@ -63,7 +63,8 @@ Implementation notes:
 
 ## Wiring into CI
 
-Example GitHub Actions step that runs *before* the Glue ingestion job:
+Example step (in whatever CI you use — no workflow files ship with this
+repo) that runs *before* the Glue ingestion job:
 
 ```yaml
 - name: Validate order landing files

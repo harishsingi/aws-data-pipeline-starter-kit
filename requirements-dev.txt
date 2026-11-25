@@ -1,0 +1,10 @@
+# Development / test dependencies only (optional).
+#
+# The test suite itself is stdlib unittest and needs nothing installed:
+#   python3 tests/run_tests.py
+#
+# Install these only if you want pytest collection or to run the Lambda
+# handler locally against real AWS clients:
+#   pip install -r requirements-dev.txt
+boto3>=1.34
+pytest>=8
